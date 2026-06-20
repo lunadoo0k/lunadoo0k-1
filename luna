@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>그린 플래너 & 루틴 매니저</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            emerald: {
+              50: '#f0fdf4',
+              100: '#dcfce7',
+              200: '#bbf7d0',
+              300: '#86efac',
+              400: '#4ade80',
+              500: '#22c55e',
+              600: '#16a34a',
+              700: '#15803d',
+              800: '#166534',
+              900: '#14532d',
+              950: '#052e16',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* 스크롤바 디자인 최적화 */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #c2d6c2;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #86b386;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#f3f6f3] text-stone-800 font-sans flex flex-col transition-colors duration-300">
+
+  <!-- 토스트 알림창 컨테이너 -->
+  <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2"></div>
+
+  <!-- 헤더 영역 -->
+  <header class="bg-emerald-800 text-emerald-50 py-4 px-6 shadow-sm border-b border-emerald-700">
+    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
+      <div class="flex items-center space-x-3">
+        <span class="text-3xl">🌱</span>
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold tracking-tight">그린 플래너 & 루틴 매니저</h1>
+          <p class="text-xs text-emerald-200">사용자의 눈과 마음이 편안한 일일 생산성 공간</p>
+        </div>
+      </div>
+      
+      <div class="flex items-center space-x-4">
+        <div class="bg-emerald-900/50 px-4 py-1.5 rounded-full text-xs font-semibold tracking-wider text-emerald-100 flex items-center gap-1.5">
+          <span class="inline-block w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping"></span>
+          LIVE CONNECTED
+        </div>
+        <div id="header-date" class="text-sm font-medium"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 레이아웃 영역 -->
+  <main class="max-w-7xl mx-auto w-full p-4 md:p-6 flex-1 flex flex-col space-y-6">
+    
+    <!-- === 상단 대시보드 영역 (명언, 타이머, 달성도 분석 그래프) === -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      
+      <!-- 1. 하루 긍정 메시지 카드 (3/12 비율) -->
+      <div class="lg:col-span-3 bg-emerald-50 border border-emerald-100 p-5 rounded-2xl flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow">
+        <div>
+          <div class="flex justify-between items-center mb-3">
+            <span class="text-xs font-bold text-emerald-700 bg-emerald-100/80 px-2.5 py-1 rounded-full uppercase tracking-wider">Today's Energy</span>
+            <button id="btn-refresh-quote" class="text-stone-400 hover:text-emerald-700 transition" title="다른 메시지 가져오기">
+              🔄
+            </button>
+          </div>
+          <p id="quote-text" class="text-base font-semibold text-emerald-900 leading-relaxed italic"></p>
+        </div>
+        <p id="quote-author" class="text-xs text-emerald-600/80 mt-4 text-right font-medium"></p>
+      </div>
+
+      <!-- 2. 타이머 & 디지털 시계 (3/12 비율) -->
+      <div class="lg:col-span-3 bg-white border border-stone-200/80 p-5 rounded-2xl flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+        <div class="absolute top-2 left-3 flex items-center space-x-1">
+          <span class="text-sm">⏱️</span>
+          <span class="text-[11px] font-bold text-stone-400 tracking-widest uppercase">Focus Timer</span>
+        </div>
+        
+        <!-- 타이머 제어 탭 -->
+        <div class="flex space-x-1.5 mb-3 bg-stone-100 p-1 rounded-lg text-xs font-semibold">
+          <button id="tab-focus" class="px-2 py-0.5 rounded transition-all bg-emerald-700 text-white shadow-xs">집중 (25m)</button>
+          <button id="tab-short" class="px-2 py-0.5 rounded transition-all text-stone-600">휴식 (5m)</button>
+          <button id="tab-long" class="px-2 py-0.5 rounded transition-all text-stone-600">휴식 (15m)</button>
+        </div>
+
+        <!-- 타이머 뷰 -->
+        <div class="flex items-center space-x-4 my-1">
+          <div class="text-center">
+            <div id="timer-display" class="text-3xl font-extrabold text-stone-800 font-mono tracking-tighter">25:00</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">포모도로 타이머</div>
+          </div>
+          <div class="h-8 w-[1px] bg-stone-200"></div>
+          <div class="text-center">
+            <div id="clock-display" class="text-2xl font-bold text-emerald-800 font-mono tracking-tighter">00:00:00</div>
+            <div class="text-[10px] text-stone-400 mt-0.5">현재 시간</div>
+          </div>
+        </div>
+
+        <!-- 타이머 컨트롤 버튼 -->
+        <div class="flex space-x-2 mt-3 w-full">
+          <button id="btn-timer-toggle" class="flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold text-white transition-all bg-emerald-700 hover:bg-emerald-800">
+            ▶️ 시작
+          </button>
+          <button id="btn-timer-reset" class="bg-stone-200 hover:bg-stone-300 text-stone-700 py-1.5 px-3 rounded-xl text-xs font-semibold transition">
+            🔄
+          </button>
+        </div>
+      </div>
+
+      <!-- 3. 오늘 달성도 종합 차트 대시보드 (6/12 비율) -->
+      <div class="lg:col-span-6 bg-white border border-stone-200/80 p-5 rounded-2xl shadow-sm flex flex-col md:flex-row items-center gap-6">
+        
+        <!-- 왼쪽: SVG 원형 링 그래프 -->
+        <div class="flex flex-col items-center justify-center shrink-0">
+          <div class="relative w-28 h-28 flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90">
+              <circle cx="56" cy="56" r="36" class="stroke-stone-100" stroke-width="8" fill="transparent"/>
+              <circle id="progress-circle" cx="56" cy="56" r="36" class="stroke-emerald-600 transition-all duration-700 ease-out" stroke-width="8" stroke-linecap="round" fill="transparent" stroke-dasharray="226.2" stroke-dashoffset="226.2"/>
+            </svg>
+            <div class="absolute flex flex-col items-center justify-center">
+              <span id="circle-emoji" class="text-xl">📈</span>
+              <span id="circle-percentage" class="text-lg font-extrabold text-stone-800 font-mono tracking-tight">0%</span>
+            </div>
+          </div>
+          <div class="text-center mt-2">
+            <span id="progress-count" class="text-xs font-bold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
+              0 / 0 완료
+            </span>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 시간대별 달성 분포 차트 -->
+        <div class="flex-1 w-full space-y-3">
+          <div class="flex justify-between items-center">
+            <h3 class="text-xs font-extrabold text-stone-500 tracking-wider uppercase">⏰ 시간대별 달성 분석 그래프</h3>
+            <span id="all-clear-badge" class="text-[10px] font-bold text-amber-600 animate-pulse hidden">👑 하루 완벽 클리어!</span>
+          </div>
+
+          <!-- 가로형 바 그래프 컴포넌트 목록 -->
+          <div id="time-blocks-container" class="space-y-2"></div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- === 전체 레이아웃 (좌측 고정 루틴 & 우측 하루 스케줄 타임라인 사이드바이사이드 배치) === -->
+    <section class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+      
+      <!-- [좌측 영역]: 고정 루틴 목록 사이드바 (md 이상에서 sticky 상단 고정 적용) -->
+      <div class="md:col-span-4 lg:col-span-3 md:sticky md:top-6 space-y-6 self-start z-10">
+        
+        <div class="bg-white border border-emerald-100/80 p-5 rounded-2xl shadow-sm">
+          <div class="flex items-center space-x-1.5 mb-3 pb-3 border-b border-stone-100">
+            <span class="text-xl">⭐</span>
+            <h2 class="text-base font-bold text-emerald-900">고정 루틴</h2>
+          </div>
+          
+          <p class="text-xs text-stone-500 leading-relaxed mb-4">
+            반복하는 루틴 카드를 <b>마우스로 잡아 우측의 원하는 시간 칸에 드롭</b>하세요!
+          </p>
+
+          <!-- 루틴 리스트 -->
+          <div id="routines-list" class="space-y-2 max-h-[320px] overflow-y-auto pr-1"></div>
+
+          <!-- 루틴 빠른 추가 폼 -->
+          <form id="routine-form" class="mt-4 pt-4 border-t border-stone-100 space-y-2.5">
+            <div class="text-xs font-bold text-stone-600">🆕 루틴 새로 만들기</div>
+            <div>
+              <input
+                id="input-routine-title"
+                type="text"
+                placeholder="예: 홈트레이닝, 카페 책방"
+                required
+                class="w-full text-xs px-3 py-2 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-stone-50"
+              />
+              <p class="text-[10px] text-emerald-600 mt-1 font-medium">💡 키워드로 어울리는 이모지가 매칭됩니다.</p>
+            </div>
+            <div class="flex space-x-1.5">
+              <select
+                id="select-routine-duration"
+                class="flex-1 text-[11px] px-1.5 py-1.5 rounded-xl border border-stone-200 bg-white"
+              >
+                <option value="15분">15분</option>
+                <option value="30분">30분</option>
+                <option value="1시간">1시간</option>
+                <option value="1시간 30분">1.5h</option>
+                <option value="2시간">2시간</option>
+                <option value="3시간">3시간</option>
+              </select>
+              <button
+                type="submit"
+                class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs px-3 py-1.5 rounded-xl font-bold transition-all shrink-0"
+              >
+                + 루틴 추가
+              </button>
+            </div>
+          </form>
+
+        </div>
+
+      </div>
+
+      <!-- [우측 영역]: "하루 일정" 타임라인 스케줄러 -->
+      <div class="md:col-span-8 lg:col-span-9">
+        
+        <div class="bg-white border border-stone-200/80 p-5 rounded-2xl shadow-sm">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center pb-4 border-b border-stone-100 mb-4 space-y-2 sm:space-y-0">
+            <div class="flex items-center space-x-2">
+              <span class="text-xl">📅</span>
+              <div>
+                <h2 class="text-base font-bold text-stone-800">하루 스케줄 타임라인</h2>
+                <p class="text-xs text-stone-500">일정을 드래그하여 이동하고 완료 시 실시간 달성 차트에 채워집니다.</p>
+              </div>
+            </div>
+            <button
+              id="btn-reset-timeline"
+              class="bg-stone-100 hover:bg-stone-200 text-stone-600 text-xs py-1 px-3 rounded-lg font-semibold transition"
+            >
+              🧹 타임라인 리셋
+            </button>
+          </div>
+
+          <!-- 24시간 일별 스케줄러 그리드 영역 -->
+          <div id="timeline-grid" class="space-y-1 max-h-[600px] overflow-y-auto pr-2"></div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- === 하단 영역: 한 줄 마음 일기 === -->
+    <section class="bg-white border border-stone-200/80 p-5 rounded-2xl shadow-sm">
+      <div class="flex items-center space-x-1.5 mb-3">
+        <span class="text-xl">📝</span>
+        <h2 class="text-base font-bold text-stone-800">오늘 하루 한 줄 마음 일기</h2>
+      </div>
+      
+      <p class="text-xs text-stone-500 mb-3 leading-relaxed">
+        오늘 하루 있었던 일이나 소소한 감정들을 기록하세요. 브라우저 저장소에 항상 비밀 보관됩니다.
+      </p>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <textarea
+          id="textarea-diary"
+          placeholder="예: 오늘은 계획했던 아침 운동과 독서 시간을 완벽하게 지켰다! 기분 좋은 청량한 하루 완료. 🍀"
+          rows="2"
+          class="flex-1 text-xs md:text-sm p-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-stone-50 resize-none"
+        ></textarea>
+        <div class="flex flex-col justify-end space-y-2 sm:w-32 shrink-0">
+          <button
+            id="btn-save-diary"
+            class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs py-2 px-3 rounded-xl font-bold transition-all shadow-sm"
+          >
+            💾 저장하기
+          </button>
+          <button
+            id="btn-clear-diary"
+            class="bg-stone-100 hover:bg-stone-200 text-stone-600 text-[11px] py-1.5 px-3 rounded-xl font-medium transition-all"
+          >
+            지우기
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 일정 추가 / 수정 모달 윈도우 -->
+  <div id="edit-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl border border-stone-100 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center justify-between pb-3 border-b border-stone-100 mb-4">
+        <h3 id="modal-header-title" class="text-sm font-bold text-stone-800 flex items-center gap-1">
+          📅 일정 관리
+        </h3>
+        <button id="btn-close-modal" class="text-stone-400 hover:text-stone-700 text-xs">✕</button>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <!-- 타이틀 -->
+        <div>
+          <label class="block text-[11px] font-bold text-stone-500 mb-1">일정명</label>
+          <input
+            id="modal-input-title"
+            type="text"
+            placeholder="예: 독서 및 티타임"
+            class="w-full px-3 py-2 border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-emerald-600 bg-stone-50"
+          />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- 시작 시간 -->
+          <div>
+            <label class="block text-[11px] font-bold text-stone-500 mb-1">시작 시간 (시)</label>
+            <select id="modal-select-start" class="w-full px-2 py-1.5 border border-stone-200 rounded-xl bg-white"></select>
+          </div>
+
+          <!-- 소요 시간 -->
+          <div>
+            <label class="block text-[11px] font-bold text-stone-500 mb-1">소요 시간</label>
+            <select id="modal-select-duration" class="w-full px-2 py-1.5 border border-stone-200 rounded-xl bg-white">
+              <option value="15">15분</option>
+              <option value="30">30분</option>
+              <option value="45">45분</option>
+              <option value="60">1시간</option>
+              <option value="90">1시간 30분</option>
+              <option value="120">2시간</option>
+              <option value="180">3시간</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex space-x-2 mt-6 pt-3 border-t border-stone-100">
+        <button id="btn-cancel-modal" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-600 py-2 rounded-xl text-xs font-semibold transition">
+          취소
+        </button>
+        <button id="btn-submit-modal" class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-white py-2 rounded-xl text-xs font-semibold transition">
+          저장하기
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 리셋/삭제 확인용 커스텀 모달 (브라우저 Alert 대체) -->
+  <div id="confirm-modal" class="fixed inset-0 bg-black/40 backdrop-blur-xs hidden flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl max-w-xs w-full p-5 shadow-xl border border-stone-100 text-center">
+      <span class="text-3xl block mb-2">💡</span>
+      <h3 id="confirm-modal-title" class="text-sm font-bold text-stone-800 mb-2">정말 진행하시겠습니까?</h3>
+      <p id="confirm-modal-desc" class="text-xs text-stone-500 mb-4"></p>
+      <div class="flex space-x-2">
+        <button id="btn-confirm-cancel" class="flex-1 bg-stone-100 hover:bg-stone-200 text-stone-600 py-2 rounded-xl text-xs font-semibold transition">아니오</button>
+        <button id="btn-confirm-ok" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-xl text-xs font-semibold transition">예</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 푸터 영역 -->
+  <footer class="bg-stone-100 border-t border-stone-200/50 py-6 text-center text-xs text-stone-400">
+    <div class="max-w-7xl mx-auto px-4 space-y-1">
+      <p>🌿 그린 플래너 & 루틴 매니저 WebApp • Vanilla JS & Tailwind CSS</p>
+      <p>© 2026 Green Scheduler Group. All rights reserved. 브라우저의 LocalStorage에 항상 보호 저장됩니다.</p>
+    </div>
+  </footer>
+
+  <!-- 애플리케이션 스크립트 -->
+  <script>
+    // === 초기 상수 및 샘플 데이터 ===
+    const DEFAULT_ROUTINES = [
+      { id: 'r1', title: '아침 가벼운 운동', duration: '30분', originalDuration: 30 },
+      { id: 'r2', title: '개발 공부 및 코딩', duration: '1시간', originalDuration: 60 },
+      { id: 'r3', title: '인문학 책 독서', duration: '1시간', originalDuration: 60 },
+      { id: 'r4', title: '따뜻한 커피 한잔하기', duration: '30분', originalDuration: 30 },
+      { id: 'r5', title: '점심 식사 요리', duration: '1시간', originalDuration: 60 },
+      { id: 'r6', title: '나만의 취미 그림 그리기', duration: '2시간', originalDuration: 120 }
+    ];
+
+    const DEFAULT_SCHEDULE = [
+      { id: 's1', title: '아침 가벼운 운동', startHour: 8, duration: 30, completed: false },
+      { id: 's2', title: '점심 식사 요리', startHour: 12, duration: 60, completed: true },
+      { id: 's3', title: '개발 공부 및 코딩', startHour: 14, duration: 90, completed: false },
+      { id: 's4', title: '인문학 책 독서', startHour: 19, duration: 60, completed: true }
+    ];
+
+    const QUOTES = [
+      { text: "오늘 하루도 당신의 페이스대로 차분하게 나아가요! 🍀", author: "그린 라이프" },
+      { text: "작은 반복이 모여 결국 큰 숲을 이룹니다. 나무 한 그루를 심는 마음으로. 🌳", author: "작은 실천" },
+      { text: "눈을 지긋이 감고 깊은숨을 세 번 들이쉬어 보세요. 평온이 깃들 거예요. ✨", author: "마음 챙김" },
+      { text: "완벽함보다는 과정을 온전히 누리는 완료함을 향해 나아가세요. 💖", author: "지혜의 숲" },
+      { text: "오늘도 애쓸 나에게 따뜻한 허브차 한 잔을 선물하는 건 어떨까요? 🍵", author: "휴식 처방" },
+      { text: "실수해도 괜찮아요. 새싹은 언제나 비를 맞고 자란답니다. 🌿", author: "스스로 격려" },
+      { text: "온전히 나에게 집중하는 시간은 언제나 고귀하고 소중합니다. 🌟", author: "나의 가치" }
+    ];
+
+    // 이모지 매칭 테이블
+    const getAutoEmoji = (title) => {
+      const text = title || '';
+      if (text.includes('운동') || text.includes('헬스') || text.includes('조깅') || text.includes('달리기') || text.includes('스트레칭')) return '🏋️‍♂️';
+      if (text.includes('독서') || text.includes('책') || text.includes('독서회') || text.includes('소설')) return '📚';
+      if (text.includes('공부') || text.includes('학습') || text.includes('시험') || text.includes('공무') || text.includes('수업')) return '✏️';
+      if (text.includes('식사') || text.includes('밥') || text.includes('점심') || text.includes('저녁') || text.includes('아침') || text.includes('식사요리') || text.includes('요리')) return '🍳';
+      if (text.includes('커피') || text.includes('카페') || text.includes('티') || text.includes('차') || text.includes('음료')) return '☕';
+      if (text.includes('취미') || text.includes('음악') || text.includes('그림') || text.includes('악기') || text.includes('아트')) return '🎨';
+      if (text.includes('잠') || text.includes('취침') || text.includes('수면') || text.includes('낮잠')) return '😴';
+      if (text.includes('코딩') || text.includes('개발') || text.includes('프로그래밍') || text.includes('리액트')) return '💻';
+      if (text.includes('회의') || text.includes('미팅') || text.includes('업무') || text.includes('작업')) return '💼';
+      if (text.includes('산책') || text.includes('걷기') || text.includes('마실')) return '🚶‍♂️';
+      if (text.includes('청소') || text.includes('정리') || text.includes('빨래')) return '🧹';
+      if (text.includes('쇼핑') || text.includes('장보기')) return '🛒';
+      return '🍀';
+    };
+
+    // === 상태 관리 (State) ===
+    let state = {
+      routines: JSON.parse(localStorage.getItem('green_routines')) || DEFAULT_ROUTINES,
+      schedule: JSON.parse(localStorage.getItem('green_schedule')) || DEFAULT_SCHEDULE,
+      diary: localStorage.getItem('green_diary') || '',
+      timer: {
+        minutes: 25,
+        seconds: 0,
+        active: false,
+        mode: 'focus' // 'focus', 'short', 'long'
+      },
+      editingItem: null, // 모달 편집 중인 스케줄 객체
+      confirmCallback: null // 커스텀 컨펌 모달 콜백용
+    };
+
+    // === 타이머 제어 인터벌 변수 ===
+    let timerInterval = null;
+
+    // === 토스트 알림 ===
+    const showAlert = (message) => {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = "bg-emerald-800 text-emerald-50 px-5 py-3 rounded-xl shadow-lg border border-emerald-600 flex items-center space-x-2 animate-bounce";
+      toast.innerHTML = `<span>🌿</span><span class="font-medium text-xs md:text-sm">${message}</span>`;
+      
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'transition-opacity', 'duration-500');
+        setTimeout(() => toast.remove(), 500);
+      }, 4000);
+    };
+
+    // === 커스텀 컨펌 대화상자 ===
+    const showConfirm = (title, desc, onOk) => {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-desc').textContent = desc;
+      const modal = document.getElementById('confirm-modal');
+      modal.classList.remove('hidden');
+      state.confirmCallback = () => {
+        modal.classList.add('hidden');
+        onOk();
+      };
+    };
+
+    document.getElementById('btn-confirm-cancel').addEventListener('click', () => {
+      document.getElementById('confirm-modal').classList.add('hidden');
+      state.confirmCallback = null;
+    });
+
+    document.getElementById('btn-confirm-ok').addEventListener('click', () => {
+      if (state.confirmCallback) {
+        state.confirmCallback();
+        state.confirmCallback = null;
+      }
+    });
+
+    // === LocalStorage 동기화 함수 ===
+    const saveStateToStorage = () => {
+      localStorage.setItem('green_routines', JSON.stringify(state.routines));
+      localStorage.setItem('green_schedule', JSON.stringify(state.schedule));
+      localStorage.setItem('green_diary', state.diary);
+    };
+
+    // === 명언 컴포넌트 ===
+    const renderQuote = () => {
+      const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+      document.getElementById('quote-text').textContent = `"${randomQuote.text}"`;
+      document.getElementById('quote-author').textContent = `- ${randomQuote.author} 로부터`;
+    };
+
+    document.getElementById('btn-refresh-quote').addEventListener('click', renderQuote);
+
+    // === 실시간 시계 컴포넌트 ===
+    const startClock = () => {
+      const updateClock = () => {
+        const now = new Date();
+        document.getElementById('clock-display').textContent = now.toLocaleTimeString('ko-KR', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        document.getElementById('header-date').textContent = now.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' });
+      };
+      updateClock();
+      setInterval(updateClock, 1000);
+    };
+
+    // === 타이머 컴포넌트 ===
+    const playTimerAlarm = () => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5 도
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 1.5);
+
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 1.5);
+      } catch (e) {
+        console.log("Audio play blocked or unsupported by browser autolock", e);
+      }
+    };
+
+    const updateTimerDisplay = () => {
+      const minStr = String(state.timer.minutes).padStart(2, '0');
+      const secStr = String(state.timer.seconds).padStart(2, '0');
+      document.getElementById('timer-display').textContent = `${minStr}:${secStr}`;
+    };
+
+    const setTimerMode = (mode) => {
+      state.timer.mode = mode;
+      state.timer.active = false;
+      clearInterval(timerInterval);
+      document.getElementById('btn-timer-toggle').textContent = '▶️ 시작';
+      
+      const focusBtn = document.getElementById('tab-focus');
+      const shortBtn = document.getElementById('tab-short');
+      const longBtn = document.getElementById('tab-long');
+
+      [focusBtn, shortBtn, longBtn].forEach(btn => {
+        btn.className = "px-2 py-0.5 rounded transition-all text-stone-600";
+      });
+
+      if (mode === 'focus') {
+        state.timer.minutes = 25;
+        focusBtn.className = "px-2 py-0.5 rounded transition-all bg-emerald-700 text-white shadow-xs";
+      } else if (mode === 'short') {
+        state.timer.minutes = 5;
+        shortBtn.className = "px-2 py-0.5 rounded transition-all bg-emerald-700 text-white shadow-xs";
+      } else if (mode === 'long') {
+        state.timer.minutes = 15;
+        longBtn.className = "px-2 py-0.5 rounded transition-all bg-emerald-700 text-white shadow-xs";
+      }
+      state.timer.seconds = 0;
+      updateTimerDisplay();
+    };
+
+    document.getElementById('tab-focus').addEventListener('click', () => setTimerMode('focus'));
+    document.getElementById('tab-short').addEventListener('click', () => setTimerMode('short'));
+    document.getElementById('tab-long').addEventListener('click', () => setTimerMode('long'));
+
+    document.getElementById('btn-timer-toggle').addEventListener('click', () => {
+      state.timer.active = !state.timer.active;
+      const btn = document.getElementById('btn-timer-toggle');
+
+      if (state.timer.active) {
+        btn.textContent = '⏸️ 정지';
+        btn.className = "flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold text-white transition-all bg-amber-600 hover:bg-amber-700";
+        
+        timerInterval = setInterval(() => {
+          if (state.timer.seconds > 0) {
+            state.timer.seconds--;
+          } else if (state.timer.seconds === 0) {
+            if (state.timer.minutes === 0) {
+              clearInterval(timerInterval);
+              state.timer.active = false;
+              playTimerAlarm();
+              showAlert("⏱️ 시간 종료! 고생하셨습니다. 달콤한 휴식을 취하거나 다음 집중을 시작하세요.");
+              setTimerMode(state.timer.mode);
+            } else {
+              state.timer.minutes--;
+              state.timer.seconds = 59;
+            }
+          }
+          updateTimerDisplay();
+        }, 1000);
+      } else {
+        btn.textContent = '▶️ 시작';
+        btn.className = "flex-1 py-1.5 px-2 rounded-xl text-xs font-semibold text-white transition-all bg-emerald-700 hover:bg-emerald-800";
+        clearInterval(timerInterval);
+      }
+    });
+
+    document.getElementById('btn-timer-reset').addEventListener('click', () => {
+      setTimerMode(state.timer.mode);
+    });
+
+    // === 달성도 종합 계산 및 가로형 바/원형 그래프 컴포넌트 ===
+    const renderStatistics = () => {
+      const total = state.schedule.length;
+      const completed = state.schedule.filter(s => s.completed).length;
+      const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      // 1. 원형 SVG 차트 갱신
+      const circleRadius = 36;
+      const circumference = 2 * Math.PI * circleRadius;
+      const dashOffset = circumference - (circumference * rate) / 100;
+      
+      const progressCircle = document.getElementById('progress-circle');
+      progressCircle.setAttribute('stroke-dasharray', circumference);
+      progressCircle.setAttribute('stroke-dashoffset', dashOffset);
+
+      document.getElementById('circle-percentage').textContent = `${rate}%`;
+      document.getElementById('circle-emoji').textContent = rate === 100 ? '👑' : '📈';
+      document.getElementById('progress-count').textContent = `${completed} / ${total} 완료`;
+
+      // 100% 달성 훈장 배지 조절
+      const allClearBadge = document.getElementById('all-clear-badge');
+      if (rate === 100 && total > 0) {
+        allClearBadge.classList.remove('hidden');
+      } else {
+        allClearBadge.classList.add('hidden');
+      }
+
+      // 2. 시간대별 데이터 가공 후 가로 바 그래프 렌더링
+      const blocks = [
+        { id: 'b1', name: '새벽 (00-06)', hours: [0, 1, 2, 3, 4, 5], color: 'from-emerald-300 to-emerald-400', icon: '🌙' },
+        { id: 'b2', name: '아침 (06-12)', hours: [6, 7, 8, 9, 10, 11], color: 'from-teal-400 to-emerald-500', icon: '🌅' },
+        { id: 'b3', name: '오후 (12-18)', hours: [12, 13, 14, 15, 16, 17], color: 'from-emerald-500 to-emerald-600', icon: '☀️' },
+        { id: 'b4', name: '저녁 (18-24)', hours: [18, 19, 20, 21, 22, 23], color: 'from-emerald-600 to-emerald-800', icon: '🌌' }
+      ];
+
+      const blocksContainer = document.getElementById('time-blocks-container');
+      blocksContainer.innerHTML = '';
+
+      blocks.forEach(block => {
+        const items = state.schedule.filter(item => block.hours.includes(Math.floor(item.startHour)));
+        const bTotal = items.length;
+        const bCompleted = items.filter(item => item.completed).length;
+        const bRate = bTotal > 0 ? Math.round((bCompleted / bTotal) * 100) : 0;
+
+        const blockEl = document.createElement('div');
+        blockEl.className = "flex items-center text-xs";
+        
+        let innerBar = '';
+        if (bTotal > 0) {
+          innerBar = `<div class="h-full bg-gradient-to-r ${block.color} rounded-md transition-all duration-500" style="width: ${bRate}%"></div>`;
+        }
+
+        blockEl.innerHTML = `
+          <div class="w-20 font-medium text-stone-600 flex items-center gap-1 select-none">
+            <span>${block.icon}</span>
+            <span class="text-[11px] truncate">${block.name.split(' ')[0]}</span>
+          </div>
+          <div class="flex-1 bg-stone-100 h-3 rounded-md overflow-hidden relative border border-stone-200/30">
+            ${innerBar}
+            <span class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-stone-400 select-none">
+              ${bTotal > 0 ? `${bCompleted}/${bTotal} 완료 (${bRate}%)` : '등록 없음'}
+            </span>
+          </div>
+        `;
+        blocksContainer.appendChild(blockEl);
+      });
+    };
+
+    // === 고정 루틴 사이드바 컴포넌트 ===
+    const renderRoutines = () => {
+      const listContainer = document.getElementById('routines-list');
+      listContainer.innerHTML = '';
+
+      state.routines.forEach(routine => {
+        const emoji = getAutoEmoji(routine.title);
+        const card = document.createElement('div');
+        card.className = "group p-3 bg-emerald-50/40 hover:bg-emerald-50 border border-emerald-100/50 hover:border-emerald-200 rounded-xl cursor-grab active:cursor-grabbing transition-all flex justify-between items-center shadow-xs hover:shadow-xs";
+        card.setAttribute('draggable', 'true');
+        card.setAttribute('title', '드래그하여 타임라인에 드롭하세요');
+
+        card.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <span class="text-lg bg-white p-1 rounded-lg border border-emerald-50 shadow-xs">
+              ${emoji}
+            </span>
+            <div>
+              <div class="text-xs font-bold text-emerald-950 truncate max-w-[110px]">
+                ${routine.title}
+              </div>
+              <span class="inline-block mt-0.5 text-[10px] px-1.5 py-0.2 bg-emerald-100/80 text-emerald-800 rounded font-medium">
+                ⏱️ ${routine.duration}
+              </span>
+            </div>
+          </div>
+          <button class="btn-delete-routine text-stone-300 hover:text-red-500 text-xs p-1 opacity-0 group-hover:opacity-100 transition-opacity" title="삭제">
+            ❌
+          </button>
+        `;
+
+        // 드래그이벤트 등록
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            type: 'routine',
+            data: routine
+          }));
+          e.dataTransfer.effectAllowed = 'copyMove';
+        });
+
+        // 삭제 이벤트
+        card.querySelector('.btn-delete-routine').addEventListener('click', (e) => {
+          e.stopPropagation();
+          state.routines = state.routines.filter(r => r.id !== routine.id);
+          saveStateToStorage();
+          renderRoutines();
+        });
+
+        listContainer.appendChild(card);
+      });
+
+      if (state.routines.length === 0) {
+        listContainer.innerHTML = `<div class="text-center py-8 text-xs text-stone-400">루틴이 없습니다. 아래에서 만들어 보세요!</div>`;
+      }
+    };
+
+    // 고정 루틴 신규 생성 폼 등록
+    document.getElementById('routine-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById('input-routine-title');
+      const durationSelect = document.getElementById('select-routine-duration');
+      
+      const title = titleInput.value.trim();
+      if (!title) return;
+
+      const durationStr = durationSelect.value;
+      let durationMins = 60;
+      if (durationStr === '15분') durationMins = 15;
+      else if (durationStr === '30분') durationMins = 30;
+      else if (durationStr === '1시간') durationMins = 60;
+      else if (durationStr === '1시간 30분') durationMins = 90;
+      else if (durationStr === '2시간') durationMins = 120;
+      else if (durationStr === '3시간') durationMins = 180;
+
+      const newRoutine = {
+        id: 'r_' + Date.now(),
+        title: title,
+        duration: durationStr,
+        originalDuration: durationMins
+      };
+
+      state.routines.push(newRoutine);
+      saveStateToStorage();
+      renderRoutines();
+      
+      titleInput.value = '';
+      showAlert(`✨ 새 고정 루틴 "${title}"이 추가되었습니다.`);
+    });
+
+    // === 타임라인 렌더링 보조 유틸 ===
+    const formatTimeStr = (hourVal) => {
+      const hr = Math.floor(hourVal);
+      const min = Math.round((hourVal % 1) * 60);
+      return `${String(hr).padStart(2, '0')}:${String(min).padStart(2, '0')}`;
+    };
+
+    // 구글 캘린더 아웃고잉 링크 템플릿 생성기
+    const exportToGoogleCalendarTemplate = (item) => {
+      const emoji = getAutoEmoji(item.title);
+      const titleWithEmoji = `${emoji} ${item.title}`;
+      
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      
+      const startHourStr = String(Math.floor(item.startHour)).padStart(2, '0');
+      const startMinStr = String((item.startHour % 1) * 60).padStart(2, '0');
+      
+      const endHourRaw = item.startHour + (item.duration / 60);
+      const endHourStr = String(Math.floor(endHourRaw) % 24).padStart(2, '0');
+      const endMinStr = String((endHourRaw % 1) * 60).padStart(2, '0');
+      
+      const dateFormatted = `${year}${month}${day}`;
+      const startTimeFormatted = `${startHourStr}${startMinStr}00`;
+      const endTimeFormatted = `${endHourStr}${endMinStr}00`;
+
+      const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(titleWithEmoji)}&dates=${dateFormatted}T${startTimeFormatted}/${dateFormatted}T${endTimeFormatted}&details=${encodeURIComponent("그린 스케줄러 웹앱에서 등록한 스케줄입니다. 오늘 하루도 파이팅!")}&sf=true&output=xml`;
+      
+      window.open(gCalUrl, '_blank');
+      showAlert("📅 구글 캘린더 등록 페이지로 이동합니다. 세부사항을 확인하고 저장하세요!");
+    };
+
+    // === 24시간 타임라인 렌더링 ===
+    const renderTimeline = () => {
+      const grid = document.getElementById('timeline-grid');
+      grid.innerHTML = '';
+
+      const currentHour = new Date().getHours();
+
+      for (let hour = 0; hour < 24; hour++) {
+        const hourLabel = `${String(hour).padStart(2, '0')}:00`;
+        const itemsInThisHour = state.schedule.filter(item => Math.floor(item.startHour) === hour);
+
+        const slot = document.createElement('div');
+        slot.className = "flex group relative items-stretch border-b border-dashed border-stone-100 pb-1 hover:bg-emerald-50/15 transition-all rounded-lg";
+        slot.style.minHeight = "52px";
+
+        // 시간 표시 라벨 영역
+        let indicatorHTML = '';
+        if (currentHour === hour) {
+          indicatorHTML = `<span class="text-[9px] bg-emerald-600 text-white px-1 rounded-sm transform scale-90 mt-0.5 font-bold animate-pulse">NOW</span>`;
+        }
+
+        let timelineMarkerHTML = '';
+        if (currentHour === hour) {
+          timelineMarkerHTML = `<div class="absolute top-[20%] -left-1 w-2.5 h-2.5 bg-emerald-600 rounded-full border-2 border-white shadow-xs"></div>`;
+        }
+
+        slot.innerHTML = `
+          <div class="w-14 shrink-0 text-stone-400 font-mono text-xs font-semibold py-1 flex flex-col justify-start items-end pr-3 select-none">
+            <span>${hourLabel}</span>
+            ${indicatorHTML}
+          </div>
+          <div class="w-[1px] bg-stone-200 relative">
+            ${timelineMarkerHTML}
+          </div>
+          <div class="timeline-dropzone flex-1 pl-3 py-1 flex flex-wrap gap-2 items-center min-h-[46px]"></div>
+        `;
+
+        const dropzone = slot.querySelector('.timeline-dropzone');
+
+        // 드롭존 DragOver, Drop 핸들러 등록
+        dropzone.addEventListener('dragover', (e) => e.preventDefault());
+        dropzone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          try {
+            const rawData = e.dataTransfer.getData('text/plain');
+            if (!rawData) return;
+            const payload = JSON.parse(rawData);
+
+            if (payload.type === 'routine') {
+              const routine = payload.data;
+              const newScheduleItem = {
+                id: 's_' + Date.now(),
+                title: routine.title,
+                startHour: hour,
+                duration: routine.originalDuration || 60,
+                completed: false
+              };
+              state.schedule.push(newScheduleItem);
+              saveStateToStorage();
+              renderTimeline();
+              renderStatistics();
+              showAlert(`📅 "${routine.title}" 일정이 ${hour}시에 등록되었습니다.`);
+            } else if (payload.type === 'schedule') {
+              const scheduleItem = payload.data;
+              state.schedule = state.schedule.map(item => {
+                if (item.id === scheduleItem.id) {
+                  return { ...item, startHour: hour };
+                }
+                return item;
+              });
+              saveStateToStorage();
+              renderTimeline();
+              renderStatistics();
+              showAlert(`🔄 일정이 ${hour}시로 이동되었습니다.`);
+            }
+          } catch (err) {
+            console.error("Drop error", err);
+          }
+        });
+
+        // 시간별 등록된 아이템 렌더링
+        if (itemsInThisHour.length > 0) {
+          itemsInThisHour.forEach(item => {
+            const emoji = getAutoEmoji(item.title);
+            const card = document.createElement('div');
+            
+            card.className = `group/item border text-xs px-3 py-1.5 rounded-xl shadow-xs hover:shadow-xs cursor-grab active:cursor-grabbing transition-all flex items-center justify-between space-x-3 max-w-full ${
+              item.completed 
+                ? 'bg-stone-50 border-stone-200/60 text-stone-400 opacity-60 line-through' 
+                : 'bg-emerald-50/30 border-emerald-100/70 text-stone-800 hover:border-emerald-200'
+            }`;
+            card.style.width = "100%";
+            card.style.maxWidth = "380px";
+            card.setAttribute('draggable', 'true');
+
+            card.innerHTML = `
+              <div class="flex items-center space-x-2 truncate">
+                <input
+                  type="checkbox"
+                  class="checkbox-item w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500 cursor-pointer shrink-0"
+                  ${item.completed ? 'checked' : ''}
+                />
+                <span class="text-base shrink-0">${emoji}</span>
+                <div class="truncate">
+                  <div class="font-bold truncate">${item.title}</div>
+                  <div class="text-[10px] text-stone-400 font-medium">
+                    ⏱️ ${item.duration}분 소요 (${formatTimeStr(item.startHour)} ~ ${formatTimeStr(item.startHour + item.duration / 60)})
+                  </div>
+                </div>
+              </div>
+              <div class="flex items-center space-x-1 shrink-0 opacity-80 group-hover/item:opacity-100 transition-opacity">
+                <button class="btn-gcal p-1 hover:bg-emerald-100/50 rounded text-emerald-700 transition" title="Google 캘린더 등록 페이지 열기">📅</button>
+                <button class="btn-edit p-1 hover:bg-stone-100 rounded text-stone-500 hover:text-stone-800 transition text-[11px]" title="수정">✏️</button>
+                <button class="btn-delete p-1 hover:bg-stone-100 rounded text-stone-300 hover:text-red-500 transition text-[11px]" title="삭제">❌</button>
+              </div>
+            `;
+
+            // 드래그 기능 바인딩 (타임라인 내 이동)
+            card.addEventListener('dragstart', (e) => {
+              e.dataTransfer.setData('text/plain', JSON.stringify({
+                type: 'schedule',
+                data: item
+              }));
+              e.dataTransfer.effectAllowed = 'move';
+            });
+
+            // 체크박스 제어
+            card.querySelector('.checkbox-item').addEventListener('change', () => {
+              item.completed = !item.completed;
+              if (item.completed) {
+                showAlert("🎉 일정을 완료했습니다! 훌륭해요.");
+              }
+              saveStateToStorage();
+              renderTimeline();
+              renderStatistics();
+            });
+
+            // 더블클릭 수정 제어
+            card.addEventListener('doubleclick', () => {
+              openModal(item);
+            });
+
+            // 구글캘린더 연동 단추 제어
+            card.querySelector('.btn-gcal').addEventListener('click', (e) => {
+              e.stopPropagation();
+              exportToGoogleCalendarTemplate(item);
+            });
+
+            // 연필모양 수정 단추 제어
+            card.querySelector('.btn-edit').addEventListener('click', (e) => {
+              e.stopPropagation();
+              openModal(item);
+            });
+
+            // 엑스표 삭제 단추 제어
+            card.querySelector('.btn-delete').addEventListener('click', (e) => {
+              e.stopPropagation();
+              showConfirm("🗑️ 일정 삭제", `"${item.title}" 일정을 완전히 삭제하시겠습니까?`, () => {
+                state.schedule = state.schedule.filter(s => s.id !== item.id);
+                saveStateToStorage();
+                renderTimeline();
+                renderStatistics();
+                showAlert("🗑️ 일정이 삭제되었습니다.");
+              });
+            });
+
+            dropzone.appendChild(card);
+          });
+        } else {
+          // 비어있을 시 직접 만들기 버튼 제공
+          const placeholder = document.createElement('div');
+          placeholder.className = "text-[11px] text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity flex items-center space-x-1.5 select-none";
+          placeholder.innerHTML = `
+            <button class="btn-add-quick text-emerald-700 hover:underline font-bold">+ 일정 직접 만들기</button>
+            <span class="text-stone-300">|</span>
+            <span>여기에 고정 루틴을 드롭하세요</span>
+          `;
+          placeholder.querySelector('.btn-add-quick').addEventListener('click', () => {
+            const defaultItem = {
+              id: 's_' + Date.now(),
+              title: '새 일정',
+              startHour: hour,
+              duration: 60,
+              completed: false,
+              isNew: true
+            };
+            openModal(defaultItem);
+          });
+          dropzone.appendChild(placeholder);
+        }
+
+        grid.appendChild(slot);
+      }
+    };
+
+    // 타임라인 리셋 바인딩
+    document.getElementById('btn-reset-timeline').addEventListener('click', () => {
+      showConfirm("🧹 타임라인 리셋", "오늘 등록된 하루 전체 일정을 리셋하여 깨끗이 지우시겠습니까?", () => {
+        state.schedule = [];
+        saveStateToStorage();
+        renderTimeline();
+        renderStatistics();
+        showAlert("📅 타임라인이 비워졌습니다.");
+      });
+    });
+
+    // === 모달 제어 시스템 ===
+    const initModalSelects = () => {
+      const selectStart = document.getElementById('modal-select-start');
+      selectStart.innerHTML = '';
+      for (let h = 0; h < 24; h++) {
+        const opt = document.createElement('option');
+        opt.value = h;
+        opt.textContent = `${String(h).padStart(2, '0')}:00`;
+        selectStart.appendChild(opt);
+      }
+    };
+
+    const openModal = (item) => {
+      state.editingItem = item;
+      document.getElementById('modal-header-title').textContent = item.isNew ? '📅 일정 직접 새로 만들기' : '✏️ 일정 및 시간대 수정';
+      document.getElementById('modal-input-title').value = item.isNew ? '' : item.title;
+      document.getElementById('modal-select-start').value = item.startHour;
+      document.getElementById('modal-select-duration').value = item.duration;
+      
+      document.getElementById('edit-modal').classList.remove('hidden');
+    };
+
+    const closeModal = () => {
+      document.getElementById('edit-modal').classList.add('hidden');
+      state.editingItem = null;
+    };
+
+    document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel-modal').addEventListener('click', closeModal);
+
+    document.getElementById('btn-submit-modal').addEventListener('click', () => {
+      const title = document.getElementById('modal-input-title').value.trim();
+      if (!title) {
+        showAlert("⚠️ 일정 이름을 정확히 입력해 주세요.");
+        return;
+      }
+
+      const start = Number(document.getElementById('modal-select-start').value);
+      const duration = Number(document.getElementById('modal-select-duration').value);
+
+      if (state.editingItem.isNew) {
+        // 새로 생성할 때
+        const newItem = {
+          id: state.editingItem.id,
+          title: title,
+          startHour: start,
+          duration: duration,
+          completed: false
+        };
+        state.schedule.push(newItem);
+        showAlert("📅 일정이 새로 등록되었습니다.");
+      } else {
+        // 기존 편집 시
+        state.schedule = state.schedule.map(s => {
+          if (s.id === state.editingItem.id) {
+            return {
+              ...s,
+              title: title,
+              startHour: start,
+              duration: duration
+            };
+          }
+          return s;
+        });
+        showAlert("📝 일정이 성공적으로 수정되었습니다.");
+      }
+
+      saveStateToStorage();
+      closeModal();
+      renderTimeline();
+      renderStatistics();
+    });
+
+    // === 일기장 처리 컴포넌트 ===
+    const initDiary = () => {
+      const tx = document.getElementById('textarea-diary');
+      tx.value = state.diary;
+      tx.addEventListener('input', (e) => {
+        state.diary = e.target.value;
+        saveStateToStorage();
+      });
+
+      document.getElementById('btn-save-diary').addEventListener('click', () => {
+        showAlert("📝 마음 일기가 안전하게 자동 저장되었습니다.");
+      });
+
+      document.getElementById('btn-clear-diary').addEventListener('click', () => {
+        showConfirm("🗑️ 일기 삭제", "작성 중이던 마음 일기 내용을 전부 정리하여 비우시겠습니까?", () => {
+          state.diary = '';
+          tx.value = '';
+          saveStateToStorage();
+          showAlert("🗑️ 일기 작성란이 정리되었습니다.");
+        });
+      });
+    };
+
+    // === 앱 로드 및 초기 진입부 ===
+    window.onload = function() {
+      renderQuote();
+      startClock();
+      initModalSelects();
+      renderRoutines();
+      renderTimeline();
+      renderStatistics();
+      initDiary();
+      updateTimerDisplay();
+    };
+  </script>
+</body>
+</html>
